@@ -677,6 +677,15 @@ class AdvancedAuthenticationTests(APITestCase):
 
                 self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
+    def test_transfer_active_vehicles_operation_requires_authentication(self):
+        response = self.client.post(
+            "/api/v1/operations/transfer-active-vehicles/",
+            {"source_office_id": 1, "target_office_id": 2},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
 
 class AdvancedSchemaTests(APITestCase):
     def get_schema(self):
