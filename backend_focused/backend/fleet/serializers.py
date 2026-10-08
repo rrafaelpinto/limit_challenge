@@ -17,6 +17,32 @@ class OfficeSerializer(serializers.ModelSerializer):
         fields = ("id", "name", "city")
 
 
+class OfficeFleetTransferSerializer(serializers.Serializer):
+    """Validate the offices that participate in an active-fleet transfer."""
+
+    source_office_id = serializers.PrimaryKeyRelatedField(
+        source="source_office",
+        queryset=Office.objects.all(),
+    )
+    target_office_id = serializers.PrimaryKeyRelatedField(
+        source="target_office",
+        queryset=Office.objects.all(),
+    )
+
+    def validate(self, attrs):
+        if attrs["source_office"] == attrs["target_office"]:
+            raise serializers.ValidationError(
+                {"target_office_id": ["Must be different from source_office_id."]}
+            )
+        return attrs
+
+
+class OfficeFleetTransferResponseSerializer(serializers.Serializer):
+    source_office_id = serializers.IntegerField()
+    target_office_id = serializers.IntegerField()
+    moved_vehicle_count = serializers.IntegerField()
+
+
 class MechanicSerializer(serializers.ModelSerializer):
     class Meta:
         model = Mechanic

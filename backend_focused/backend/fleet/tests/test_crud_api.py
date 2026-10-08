@@ -142,6 +142,42 @@ class CrudSchemaTests(APITestCase):
             with self.subTest(url=url):
                 self.assertIn("409", paths[url]["delete"]["responses"])
 
+    def test_schema_documents_transfer_active_vehicles_operation(self):
+        schema = self.get_schema()
+        operation = schema["paths"][
+            "/api/v1/operations/transfer-active-vehicles/"
+        ]["post"]
+
+        self.assertEqual(operation["security"], [{"jwtAuth": []}])
+        self.assertIn("200", operation["responses"])
+        self.assertIn("400", operation["responses"])
+
+        def resolve_component(schema_fragment):
+            while "$ref" in schema_fragment:
+                component_name = schema_fragment["$ref"].rsplit("/", 1)[-1]
+                schema_fragment = schema["components"]["schemas"][component_name]
+            return schema_fragment
+
+        request_schema = resolve_component(
+            operation["requestBody"]["content"]["application/json"]["schema"]
+        )
+        response_schema = resolve_component(
+            operation["responses"]["200"]["content"]["application/json"]["schema"]
+        )
+
+        self.assertTrue(
+            {"source_office_id", "target_office_id"}.issubset(
+                request_schema["properties"]
+            )
+        )
+        self.assertTrue(
+            {
+                "source_office_id",
+                "target_office_id",
+                "moved_vehicle_count",
+            }.issubset(response_schema["properties"])
+        )
+
     def test_schema_separates_nested_reads_from_id_writes(self):
         schemas = self.get_schema()["components"]["schemas"]
 

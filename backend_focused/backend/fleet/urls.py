@@ -1,3 +1,4 @@
+from django.urls import path
 from rest_framework.routers import SimpleRouter
 
 from fleet.views import (
@@ -5,6 +6,7 @@ from fleet.views import (
     MaintenanceTypeViewSet,
     MechanicViewSet,
     OfficeViewSet,
+    TransferActiveVehiclesAPIView,
     VehicleMakeViewSet,
     VehicleModelViewSet,
     VehicleViewSet,
@@ -19,4 +21,10 @@ router.register("mechanics", MechanicViewSet)
 router.register("maintenance-types", MaintenanceTypeViewSet)
 router.register("maintenance-records", MaintenanceRecordViewSet)
 
-urlpatterns = router.urls
+urlpatterns = [
+    path(
+        "operations/transfer-active-vehicles/",
+        TransferActiveVehiclesAPIView.as_view(),
+        name="transfer-active-vehicles",
+    ),
+] + router.urls

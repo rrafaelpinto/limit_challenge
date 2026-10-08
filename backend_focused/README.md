@@ -14,7 +14,8 @@ fleet of vehicles and their maintenance history, plus a frontend that uses it.
 - **Catalogs**: vehicle makes and models are normalized into `VehicleMake` and `VehicleModel`
   resources. Maintenance types are their own resource too.
 - **Advanced endpoints**: office summary, vehicle search, vehicle detail with full history,
-  maintenance history, office assignment, mechanic workload, maintenance due and duplicate check.
+  maintenance history, office assignment, mechanic workload, maintenance due, duplicate check and
+  an educational active-fleet transfer operation.
 - **Query performance**: joins and prefetches on every read path, `EXISTS` and aggregate queries
   for search and reports, and tests that pin query counts.
 - **API docs**: OpenAPI schema and Swagger UI through `drf-spectacular`.
@@ -118,6 +119,7 @@ All application endpoints are under `/api/v1/` and return JSON. Lists are pagina
 | Mechanic workload | `GET mechanics/workload/` (plain list, busiest first) |
 | Vehicles needing maintenance | `GET vehicles/maintenance-due/` |
 | Duplicate vehicle check | `GET vehicles/duplicate-check/?vin=&license_plate=` |
+| Educational active-fleet transfer | `POST operations/transfer-active-vehicles/` with `{"source_office_id": 1, "target_office_id": 2}`; moves every active vehicle between offices atomically and returns the moved count |
 
 Relations are nested objects on read and `*_id` fields on write (`office_id`, `model_id`,
 `make_id`, `vehicle_id`, `mechanic_id`, `type_id`).
@@ -185,8 +187,11 @@ check by hand.
 
 ### Tradeoffs
 
-- CRUD stays in plain DRF viewsets. Report and filter queries live in `fleet/selectors.py`. There
-  is no service or repository layer, because the logic does not need one.
+- CRUD stays in plain DRF viewsets, and report and filter queries live in `fleet/selectors.py`.
+  Services remain exceptional and focused: `fleet/services.py` is used only for complex business
+  writes that need orchestration, atomicity, or meaningful domain rules. The educational
+  `POST operations/transfer-active-vehicles/` operation is the example: its APIView validates the
+  HTTP request, while the service atomically moves all active vehicles between two distinct offices.
 - Query behavior is treated as correctness: read paths join or prefetch their relations, search
   and reports run as single queries, and tests pin the query counts. See
   [System Design Notes](docs/SYSTEM_DESIGN.md) for details.

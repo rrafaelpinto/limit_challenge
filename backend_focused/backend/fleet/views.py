@@ -9,8 +9,9 @@ from drf_spectacular.utils import (
 from rest_framework import serializers, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
-from fleet import selectors
+from fleet import selectors, services
 from fleet.models import (
     MaintenanceRecord,
     MaintenanceType,
@@ -25,6 +26,8 @@ from fleet.serializers import (
     MaintenanceTypeSerializer,
     MechanicSerializer,
     MechanicWorkloadSerializer,
+    OfficeFleetTransferResponseSerializer,
+    OfficeFleetTransferSerializer,
     OfficeSerializer,
     OfficeSummarySerializer,
     VehicleDetailSerializer,
@@ -52,6 +55,35 @@ protected_destroy_schema = extend_schema_view(
         },
     ),
 )
+
+
+class TransferActiveVehiclesAPIView(APIView):
+    """Move every active vehicle from one office to another."""
+
+    @extend_schema(
+        request=OfficeFleetTransferSerializer,
+        responses={
+            200: OfficeFleetTransferResponseSerializer,
+            400: OpenApiResponse(
+                description="Invalid office ids or identical source and target offices."
+            ),
+        },
+    )
+    def post(self, request):
+        serializer = OfficeFleetTransferSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        source_office = serializer.validated_data["source_office"]
+        target_office = serializer.validated_data["target_office"]
+        result = services.transfer_active_vehicles(
+            source_office=source_office,
+            target_office=target_office,
+        )
+        response_data = {
+            "source_office_id": source_office.pk,
+            "target_office_id": target_office.pk,
+            "moved_vehicle_count": result.moved_vehicle_count,
+        }
+        return Response(OfficeFleetTransferResponseSerializer(response_data).data)
 
 
 @protected_destroy_schema
