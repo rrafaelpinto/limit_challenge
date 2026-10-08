@@ -20,12 +20,15 @@ flowchart LR
 
     API --> CRUD[ViewSets + Serializers]
     API --> Q[Query Selectors]
+    API --> OP[Business Operation APIView]
 
     Q --> E[EXISTS<br/>Vehicle Search]
     Q --> A[Filtered Aggregates<br/>Office / Mechanic Reports]
     Q --> S[Correlated Subquery<br/>Maintenance Due]
 
     CRUD --> ORM[Django ORM]
+    OP --> Service[Service]
+    Service --> ORM
     E --> ORM
     A --> ORM
     S --> ORM
@@ -101,20 +104,24 @@ This keeps the rule in SQL, avoids Python-side grouping, and allows never-mainta
 
 I deliberately avoided introducing repository classes, generic service layers, or base selector abstractions.
 
-Simple CRUD stays where DRF already handles it well. Query-heavy behavior lives in small plain functions because those functions own real semantics: date windows, aggregate rules, same-record search behavior, and maintenance-due logic.
-
-This keeps the codebase easy to navigate while still separating HTTP concerns from non-trivial query rules.
-
-The main flow is:
+The architecture follows the complexity that is actually present:
 
 ```text
-request
-  -> DRF validation
-  -> viewset/action
-  -> query-specific selector when needed
-  -> ORM
-  -> serializer
+Simple CRUD:
+request -> ModelViewSet -> ModelSerializer -> ORM
+
+Complex reads:
+request -> ViewSet/action -> Serializer -> selector -> ORM
+
+Complex business writes:
+request -> APIView/ViewSet action -> Serializer -> service -> ORM
 ```
+
+`ModelViewSet` remains the conventional choice for CRUD. An `APIView` is appropriate when an endpoint represents a business operation or use case rather than natural CRUD for a single resource.
+
+Services are not a layer for every write. They are introduced when an operation needs orchestration, atomicity, multiple state changes, or meaningful business rules. Selectors continue to own query and read-side semantics; services own business operations that change state.
+
+`POST /api/v1/operations/transfer-active-vehicles/` is an educational example of the complex-write flow. Its dedicated business-operation APIView validates the HTTP request, then delegates the atomic transfer of active vehicles between offices to a service. This makes the use case explicit without turning it into an artificial CRUD action on a single vehicle.
 
 ## 4. API boundary and discoverability
 
